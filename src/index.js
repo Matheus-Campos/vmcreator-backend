@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const http = require('http');
+const shell = require('child_process').exec;
 
 const server = http.createServer((req, res) => {
   // Set CORS headers
@@ -15,7 +16,7 @@ const server = http.createServer((req, res) => {
       query: { name, cpu, ram, ip }
     } = url.parse(req.url, true);
 
-    const script =
+    const scriptContent =
       `vboxmanage createvm --name ${name} --ostype Debian --register;\n` +
       `vboxmanage modifyvm ${name} --memory ${ram} --cpus ${cpu};\n` +
       `vboxmanage createhd --filename ${path.resolve(
@@ -26,13 +27,25 @@ const server = http.createServer((req, res) => {
       `vboxmanage modifyvm ${name} --vrdemulticon on --vrdeport 3390;\n` +
       `vboxmanage startvm ${name} --type headless;\n`;
 
-    const scriptPath = path.resolve(__dirname, '..', 'tmp', 'vm.sh');
+    const scriptName = `${new Date().getTime()}-${name}-vm.sh`;
+
+    const scriptPath = path.resolve(__dirname, '..', 'tmp', scriptName);
 
     if (fs.existsSync(scriptPath)) {
       fs.unlinkSync(scriptPath);
     }
 
-    fs.appendFileSync(scriptPath, script);
+    fs.appendFileSync(scriptPath, scriptContent);
+
+    shell(
+      `source ${scriptPath}`,
+      { shell: '/bin/bash' },
+      (err, stdout, stderr) => {
+        if (err) throw err;
+
+        console.log(stdout + '\n');
+      }
+    );
 
     return res.end();
   }
