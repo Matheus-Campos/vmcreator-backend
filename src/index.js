@@ -16,20 +16,24 @@ const server = http.createServer((req, res) => {
       query: { name, cpu, ram, ip }
     } = url.parse(req.url, true);
 
+    const baseDisk = path.resolve(
+      '/home/matheuscds/VirtualBox\\ VMs/Base/Base.vdi'
+    );
+    const disk = path.resolve(
+      `/home/matheuscds/VirtualBox\\ VMs/${name}/${name}.vdi`
+    );
+    const scriptName = `${new Date().getTime()}-${name}-vm.sh`;
+    const scriptPath = path.resolve(__dirname, '..', 'tmp', scriptName);
+
     const scriptContent =
-      `vboxmanage createvm --name ${name} --ostype Debian --register;\n` +
+      `vboxmanage createvm --name ${name} --ostype Ubuntu_64 --register;\n` +
       `vboxmanage modifyvm ${name} --memory ${ram} --cpus ${cpu};\n` +
-      `vboxmanage createhd --filename ${path.resolve(
-        `/home/matheuscds/VirtualBox\\ VMs/${name}/${name}.vdi`
-      )} --size 18000 --format VDI;\n` +
-      `vboxmanage modifyvm ${name} --natbindip1 ${ip};` +
+      `vboxmanage clonehd ${baseDisk} ${disk} --format VDI;\n` +
+      `vboxmanage storagectl ${name} --name "SATA Controller" --add sata --controller IntelAhci;\n` +
+      `vboxmanage storageattach ${name} --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium ${disk};\n` +
       `vboxmanage modifyvm ${name} --vrde on;\n` +
       `vboxmanage modifyvm ${name} --vrdemulticon on --vrdeport 3390;\n` +
       `vboxmanage startvm ${name} --type headless;\n`;
-
-    const scriptName = `${new Date().getTime()}-${name}-vm.sh`;
-
-    const scriptPath = path.resolve(__dirname, '..', 'tmp', scriptName);
 
     if (fs.existsSync(scriptPath)) {
       fs.unlinkSync(scriptPath);
@@ -41,7 +45,7 @@ const server = http.createServer((req, res) => {
       `source ${scriptPath}`,
       { shell: '/bin/bash' },
       (err, stdout, stderr) => {
-        if (err) throw err;
+        if (err) console.log(stderr);
 
         console.log(stdout + '\n');
       }
