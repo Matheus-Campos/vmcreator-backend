@@ -27,12 +27,13 @@ const server = http.createServer((req, res) => {
 
     const scriptContent =
       `vboxmanage createvm --name ${name} --ostype Ubuntu_64 --register;\n` +
-      `vboxmanage modifyvm ${name} --memory ${ram} --cpus ${cpu};\n` +
+      `vboxmanage modifyvm ${name} --memory ${ram} --cpus ${cpu} --vram 128;\n` +
       `vboxmanage clonehd ${baseDisk} ${disk} --format VDI;\n` +
       `vboxmanage storagectl ${name} --name "SATA Controller" --add sata --controller IntelAhci;\n` +
       `vboxmanage storageattach ${name} --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium ${disk};\n` +
-      `vboxmanage modifyvm ${name} --vrde on;\n` +
-      `vboxmanage modifyvm ${name} --vrdemulticon on --vrdeport 3390;\n` +
+      `vboxmanage modifyvm ${name} --bridgeadapter1 wlp3s0;\n` +
+      `vboxmanage modifyvm ${name} --nic1 bridged;\n` +
+      `vboxmanage modifyvm ${name} --vrde on --vrdeaddress ${ip} --vrdemulticon on;\n` +
       `vboxmanage startvm ${name} --type headless;\n`;
 
     if (fs.existsSync(scriptPath)) {
@@ -51,6 +52,9 @@ const server = http.createServer((req, res) => {
       }
     );
 
+    return res.end();
+  } else {
+    res.statusCode = 404;
     return res.end();
   }
 });
